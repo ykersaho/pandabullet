@@ -77,6 +77,7 @@ class BouncingBall(ShowBase):
 
         # render shadows
         self.render.setShaderAuto()
+        self.autofollow=100
 
     def add_object(self, name, texturename, mass, scale, type=0):
         #panda
@@ -151,6 +152,21 @@ class BouncingBall(ShowBase):
             # get elapsed time
             curr_time = time.time()
             dt = curr_time - self.prev_time
+            # calculate player position
+            bpos, bort = p.getBasePositionAndOrientation(self.ballc)
+            blvel, bavel = p.getBaseVelocity(self.ballc)
+            if(blvel[1] > 1):
+                self.playerpos.x = self.playerpos.x+(0-self.playerpos.x) /  self.autofollow
+                self.playerpos.y = self.playerpos.y+(-5-self.playerpos.y) /  self.autofollow
+            if(blvel[1] < -1):
+                self.playerpos.x = self.playerpos.x+(bpos[0]-self.playerpos.x)/ self.autofollow
+            if(abs(blvel[1]) < 1):
+                self.playerpos.x = self.playerpos.x+(bpos[0]-self.playerpos.x)/ self.autofollow
+                self.playerpos.y = self.playerpos.y+(bpos[1]-self.playerpos.y)/ self.autofollow
+            
+            self.cam.setPos(self.playerpos.x, -15, 4)
+            self.cam.lookAt(self.playerpos.x, 0, 1)
+
             # get tracker position and orientation
             position, rotation = get_tracker_pose()
             if position and rotation:
@@ -184,7 +200,7 @@ class BouncingBall(ShowBase):
             self.prev_paddle_rot = np.array(adjusted_rotation)
             self.prev_time = curr_time
 
-            if position[1] > 1.2:
+            if position[1] > 1.5:
                 p.resetBasePositionAndOrientation(self.ballc, posObj=[0, -5, 3],ornObj=[0, 0, 1, 0])
                 
             if keyboard.is_pressed('c'):
