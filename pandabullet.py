@@ -47,6 +47,7 @@ class BouncingBall(ShowBase):
         self.setup_tracker()
         self.setup_scene()
         self.setup_world()
+        self.lock = Semaphore()
         self.taskMgr.add(self.update_display, "update_display",sort=0)
         threading.Thread(target=self.update_physics).start()
 
@@ -58,7 +59,7 @@ class BouncingBall(ShowBase):
 
     def setup_scene(self):
         # camera position and light
-        self.cam.setPos(0, -15, 4)
+        self.cam.setPos(0, -25, 4)
         self.cam.lookAt(0, 0, 1)
 
         # sun light
@@ -114,23 +115,23 @@ class BouncingBall(ShowBase):
         p.setGravity(0, 0, -9.8)
         p.resetDebugVisualizerCamera(cameraDistance=6, cameraYaw=0, cameraPitch=-30, cameraTargetPosition=[0, 0, 0])
         # Sol physique
-        self.groundm, self.groundc = self.add_object("./data/cube.obj", "./data/tennis.jpg", 0.0, Vec3(20,20,1))
+        self.groundm, self.groundc = self.add_object("./data/cube.obj", "./data/tennis.jpg", 0.0, Vec3(30,30,1))
         q = Quat()
         q.setHpr(Vec3(0,0,180))
         p.resetBasePositionAndOrientation(self.groundc, [0,0,0], q)
 
         # mur physique
-        self.wallm,self.wallc = self.add_object("./data/cube.obj", "./data/wall.jpg", 0.0, Vec3(20,10,1))      
+        self.wallm,self.wallc = self.add_object("./data/cube.obj", "./data/wall.jpg", 0.0, Vec3(30,20,1))      
         q = Quat()
         q.setHpr(Vec3(90,0,0))
-        p.resetBasePositionAndOrientation(self.wallc, [0.1,10,4.5], q)
+        p.resetBasePositionAndOrientation(self.wallc, [0.2,15,7], q)
 
         # Balle physique
-        self.ballm,self.ballc = self.add_object("./data/sphere.obj", "./data/ball.jpg", 0.05, Vec3(0.005,0.005,0.005),1)
+        self.ballm,self.ballc = self.add_object("./data/sphere.obj", "./data/ball.jpg", 0.05, Vec3(0.008,0.008,0.008),1)
         p.resetBasePositionAndOrientation(self.ballc, [0,0,3], [0,0,0,1])
 
         # Raquette physique
-        self.racketm,self.racketc = self.add_object("./data/racket.obj", "./data/racket.jpg", 1.0, Vec3(0.03,0.03,0.03),2)
+        self.racketm,self.racketc = self.add_object("./data/racket.obj", "./data/racket.jpg", 1.0, Vec3(0.05,0.05,0.05),2)
         p.resetBasePositionAndOrientation(self.racketc, [0,0,2], [0,0,0,1])
         
     def update_position(self,mod,col):
@@ -140,31 +141,39 @@ class BouncingBall(ShowBase):
         mod.setHpr(quat.getHpr())
 
     def update_display(self,task):
+        self.lock.acquire()
         self.update_position(self.groundm,self.groundc)
         self.update_position(self.wallm,self.wallc)
         self.update_position(self.ballm,self.ballc)
         self.update_position(self.racketm,self.racketc)
+        self.lock.release()
         return task.cont
 
     def update_physics(self):
         # Simulation
         while True:
+            self.lock.acquire()
             # get elapsed time
             curr_time = time.time()
             dt = curr_time - self.prev_time
             # calculate player position
+            # evaluate where the ball will touch the ground
+            gravity=9.8
             bpos, bort = p.getBasePositionAndOrientation(self.ballc)
             blvel, bavel = p.getBaseVelocity(self.ballc)
-            if(blvel[1] > 1):
-                self.playerpos.x = self.playerpos.x+(0-self.playerpos.x) /  self.autofollow
-                self.playerpos.y = self.playerpos.y+(-5-self.playerpos.y) /  self.autofollow
-            if(blvel[1] < -1):
-                self.playerpos.x = self.playerpos.x+(bpos[0]-self.playerpos.x)/ self.autofollow
-            if(abs(blvel[1]) < 1):
-                self.playerpos.x = self.playerpos.x+(bpos[0]-self.playerpos.x)/ self.autofollow
-                self.playerpos.y = self.playerpos.y+(bpos[1]-self.playerpos.y)/ self.autofollow
+            sr= blvel[2]*blvel[2] + 2*gravity*bpos[2]
+            if sr>0:
+                tf = (-blvel[2] + np.sqrt(sr))/(-gravity)
+                if tf < 0:
+                    tf = (-blvel[2] - np.sqrt(sr))/(-gravity)
+                
+                if(blvel[1] < 0) and (blvel[2] < 0):
+                    xf = bpos[0] + blvel[0] * tf
+                    yf = bpos[1] + blvel[1] * tf
+                    self.playerpos.x = self.playerpos.x+(xf-self.playerpos.x)/ self.autofollow
+                    self.playerpos.y = self.playerpos.y+(yf-self.playerpos.y)/ self.autofollow
             
-            self.cam.setPos(self.playerpos.x, -15, 4)
+            self.cam.setPos(self.playerpos.x, -25, 4)
             self.cam.lookAt(self.playerpos.x, 0, 1)
 
             # get tracker position and orientation
@@ -201,14 +210,16 @@ class BouncingBall(ShowBase):
             self.prev_time = curr_time
 
             if position[1] > 1.5:
-                p.resetBasePositionAndOrientation(self.ballc, posObj=[0, -5, 3],ornObj=[0, 0, 1, 0])
+                p.resetBasePositionAndOrientation(self.ballc, posObj=[0, -8, 3],ornObj=[0, 0, 1, 0])
+                self.playerpos = Vec3(0,-8, 0)
                 
             if keyboard.is_pressed('c'):
-                p.resetBasePositionAndOrientation(self.ballc, posObj=[0, 0, 3],ornObj=[0, 0, 1, 0])
+                p.resetBasePositionAndOrientation(self.ballc, posObj=[0, -8, 3],ornObj=[0, 0, 1, 0])
                 self.translationoffset,self.rotationoffset = calibrate_tracker()
                 self.prev_paddle_pos = np.array([0.0, 0.0, 0.0])
                 self.prev_paddle_rot = np.array([0.0, 0.0, 0.0, 1.0])  # Quaternion
                 self.prev_time = time.time()
+            self.lock.release()
             p.stepSimulation()
             time.sleep(1/240)
         return
