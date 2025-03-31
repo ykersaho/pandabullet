@@ -59,7 +59,7 @@ class BouncingBall(ShowBase):
 
     def setup_scene(self):
         # camera position and light
-        self.cam.setPos(0, -25, 4)
+        self.cam.setPos(0, -30, 4)
         self.cam.lookAt(0, 0, 1)
 
         # sun light
@@ -67,12 +67,18 @@ class BouncingBall(ShowBase):
         sun_light.setColor(Vec4(1, 1, 0.9, 1))  # sun color
         sun_light.setShadowCaster(True, 2048, 2048)  # activate shader
         sun_light_np = self.render.attachNewNode(sun_light)
-        sun_light_np.setPos(0, 0, 8)  # light position
+        sun_light_np.setPos(0, 0, 100)  # light position
         self.render.setLight(sun_light_np)
+
+        spot_light = PointLight('spot_light')
+        spot_light.setColor(Vec4(1, 1, 0.9, 1))  # sun color
+        spot_light_np = self.render.attachNewNode(spot_light)
+        spot_light_np.setPos(0, -50, 10)  # light position
+        self.render.setLight(spot_light_np)
 
         # ambiant
         ambient = AmbientLight("ambient")
-        ambient.setColor((0.5, 0.5, 0.5, 1))  
+        ambient.setColor((0.3, 0.3, 0.3, 1))  
         ambient_np = self.render.attachNewNode(ambient)
         self.render.setLight(ambient_np)
 
@@ -80,11 +86,12 @@ class BouncingBall(ShowBase):
         self.render.setShaderAuto()
         self.autofollow=100
 
-    def add_object(self, name, texturename, mass, scale, type=0):
+    def add_object(self, name, texturename, mass, scale, type=0,rest=0.9):
         #panda
         model = self.loader.loadModel(name)
-        texture = self.loader.loadTexture(texturename)  
-        model.setTexture(texture, 1)
+        if(texturename != ""):
+            texture = self.loader.loadTexture(texturename)  
+            model.setTexture(texture, 1)
         model.setScale(scale)
         modelid = model.reparentTo(self.render)
         
@@ -106,7 +113,7 @@ class BouncingBall(ShowBase):
 
         # body
         collisionid = p.createMultiBody(baseMass=mass, baseCollisionShapeIndex=collision)
-        p.changeDynamics(collisionid, -1, restitution=0.9)
+        p.changeDynamics(collisionid, -1, restitution=rest)
         return model,collisionid
 
     def setup_world(self):
@@ -115,19 +122,19 @@ class BouncingBall(ShowBase):
         p.setGravity(0, 0, -9.8)
         p.resetDebugVisualizerCamera(cameraDistance=6, cameraYaw=0, cameraPitch=-30, cameraTargetPosition=[0, 0, 0])
         # Sol physique
-        self.groundm, self.groundc = self.add_object("./data/cube.obj", "./data/tennis.jpg", 0.0, Vec3(30,30,1))
+        self.groundm, self.groundc = self.add_object("./data/cube.obj", "./data/tennisfull.jpg", 0.0, Vec3(60,60,1))
         q = Quat()
         q.setHpr(Vec3(0,0,180))
         p.resetBasePositionAndOrientation(self.groundc, [0,0,0], q)
 
-        # mur physique
-        self.wallm,self.wallc = self.add_object("./data/cube.obj", "./data/wall.jpg", 0.0, Vec3(30,20,1))      
+        # filet
+        self.netm,self.netc = self.add_object("./data/tennisnet.obj", "", 0.0, Vec3(2,2,2),0,0.1)      
         q = Quat()
         q.setHpr(Vec3(90,0,0))
-        p.resetBasePositionAndOrientation(self.wallc, [0.2,15,7], q)
+        p.resetBasePositionAndOrientation(self.netc, [0,-1.4,0], q)
 
         # Balle physique
-        self.ballm,self.ballc = self.add_object("./data/sphere.obj", "./data/ball.jpg", 0.05, Vec3(0.008,0.008,0.008),1)
+        self.ballm,self.ballc = self.add_object("./data/ball1.obj", "./data/ball.png", 0.05, Vec3(0.5,0.5,0.5),1)
         p.resetBasePositionAndOrientation(self.ballc, [0,0,3], [0,0,0,1])
 
         # Raquette physique
@@ -143,7 +150,7 @@ class BouncingBall(ShowBase):
     def update_display(self,task):
         self.lock.acquire()
         self.update_position(self.groundm,self.groundc)
-        self.update_position(self.wallm,self.wallc)
+        self.update_position(self.netm,self.netc)
         self.update_position(self.ballm,self.ballc)
         self.update_position(self.racketm,self.racketc)
         self.lock.release()
@@ -167,13 +174,13 @@ class BouncingBall(ShowBase):
                 if tf < 0:
                     tf = (-blvel[2] - np.sqrt(sr))/(-gravity)
                 
-                if(blvel[1] < 0) and (blvel[2] < 0):
+                if((blvel[1] < 0) and (blvel[2] < 0)) or (Vec3(blvel).length() < 2):
                     xf = bpos[0] + blvel[0] * tf
                     yf = bpos[1] + blvel[1] * tf
                     self.playerpos.x = self.playerpos.x+(xf-self.playerpos.x)/ self.autofollow
                     self.playerpos.y = self.playerpos.y+(yf-self.playerpos.y)/ self.autofollow
             
-            self.cam.setPos(self.playerpos.x, -25, 4)
+            self.cam.setPos(self.playerpos.x, -40, 4)
             self.cam.lookAt(self.playerpos.x, 0, 1)
 
             # get tracker position and orientation
@@ -210,8 +217,8 @@ class BouncingBall(ShowBase):
             self.prev_time = curr_time
 
             if position[1] > 1.5:
-                p.resetBasePositionAndOrientation(self.ballc, posObj=[0, -8, 3],ornObj=[0, 0, 1, 0])
-                self.playerpos = Vec3(0,-8, 0)
+                p.resetBasePositionAndOrientation(self.ballc, posObj=[0, -30, 3],ornObj=[0, 0, 1, 0])
+                self.playerpos = Vec3(0,-30, 0)
                 
             if keyboard.is_pressed('c'):
                 p.resetBasePositionAndOrientation(self.ballc, posObj=[0, -8, 3],ornObj=[0, 0, 1, 0])
