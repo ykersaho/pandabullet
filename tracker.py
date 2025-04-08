@@ -1,9 +1,11 @@
 import openvr
 import pynput
+import ctypes
 import numpy as np
 import pybullet as p
 from panda3d.core import *
 import math
+from pynput.mouse import Controller, Button
 
 class Tracker:
     def calibrate(self):
@@ -50,9 +52,9 @@ class TrackerVive(Tracker):
     
 class TrackerMouse:
     def __init__(self):
-        self.mouse = pynput.mouse.Controller()
+        self.mouse = Controller()
     def calibrate(self):
-        position = [0, 0, 3]
+        position = [0, -10, 3]
         rotation = [0, 0, 0, 1]
         position[0] = self.mouse.position[0]
         position[1] = self.mouse.position[1]
@@ -71,10 +73,10 @@ class TrackerMouse:
         dy = position[1] - self.previousPosition[1]
         angle = self.previousPosition[2]
         if(dx*dx + dy*dy > 100):
-            if(dy < 0 and dx < 0):
-                self.forehand = True
-            elif(dy < 0 and dx > 0):
+            if(ctypes.windll.user32.GetAsyncKeyState(1) & 0x8000 != 0):
                 self.forehand = False
+            else:
+                self.forehand = True
             self.previousPosition[0] = position[0]
             self.previousPosition[1] = position[1]
             if(self.forehand):
@@ -97,4 +99,8 @@ class TrackerMouse:
         rotation = rotation3 * rotation2 * rotation1
         x = position[0] / 50
         y = position[1] / 50
-        return [x,y,3], [rotation[0], rotation[1], rotation[2], rotation[3]]
+        if y < -5:
+            z = 0
+        else:
+            z = (y+5)*(y+5)/10
+        return [x,y,z], [rotation[0], rotation[1], rotation[2], rotation[3]]
