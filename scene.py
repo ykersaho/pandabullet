@@ -8,7 +8,7 @@ class Scene(ShowBase):
     def __init__(self, physics):
         ShowBase.__init__(self)
         self.setup_scene()
-        self.disableMouse()
+        #self.disableMouse()
         self.taskMgr.add(self.update_display, "update_display",sort=0)
         self.p = physics
         self.objets = []

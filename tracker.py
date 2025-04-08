@@ -3,6 +3,7 @@ import pynput
 import ctypes
 import numpy as np
 import pybullet as p
+from scipy.spatial.transform import Rotation as R
 from panda3d.core import *
 import math
 from pynput.mouse import Controller, Button
@@ -17,16 +18,13 @@ class TrackerVive(Tracker):
     def __init__(self):
         # tracker Vive initialiation
         self.vr_system = openvr.init(openvr.VRApplication_Scene)
-        self.calibrate(self)
+        self.calibrate()
     def calibrate(self):
-        position, rotation = self.getTrackerPos()
-        if position:
-            print(f"initial position : {position}")
-            print(f"initial rotation : {rotation}")
-            self.initialPosition = position
-            self.initialRotation = rotation
+        self.initialPosition =[0,0,0]
+        self.initialRotation = [0,0,0,1]
+        position, rotation = self.getTrackerPos(True)
         return
-    def getTrackerPos(self):
+    def getTrackerPos(self,calibrate=False):
         #get tracker data
         poses = self.vr_system.getDeviceToAbsoluteTrackingPose(openvr.TrackingUniverseStanding, 0, openvr.k_unMaxTrackedDeviceCount) 
         for device_idx in range(openvr.k_unMaxTrackedDeviceCount):
@@ -43,6 +41,8 @@ class TrackerVive(Tracker):
                 rotation_matrix = matrix[:, :3] # orientation
                 rotation = R.from_matrix(rotation_matrix).as_quat()    
                 position = [position[i] for i in range(3)]
+                if(calibrate):
+                    self.initialPosition = position
                 adjusted_position = [4*(position[i] - self.initialPosition[i]) for i in range(3)]
                 adjusted_position[0],adjusted_position[1],adjusted_position[2]=-adjusted_position[0],adjusted_position[2],adjusted_position[1]
                 adjusted_rotation=rotation

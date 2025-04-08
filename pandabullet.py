@@ -13,7 +13,7 @@ import tracker
 class BouncingBall():
     def __init__(self,scene):
         self.s = scene
-        self.tracker = tracker.TrackerMouse()
+        self.tracker = tracker.TrackerVive()
         self.setup_tracker()
         self.setup_world()
         self.lock = Semaphore()
@@ -42,7 +42,7 @@ class BouncingBall():
         self.netm,self.netc = self.s.add_object("./data/tennisnet.obj", "", 0.0, Vec3(2,2,2),0,0.1)      
         q = Quat()
         q.setHpr(Vec3(90,0,0))
-        p.resetBasePositionAndOrientation(self.netc, [0,-1.4,0], q)
+        p.resetBasePositionAndOrientation(self.netc, [0,-1.8,0], q)
 
         # Balle physique
         self.ballm,self.ballc = self.s.add_object("./data/ball1.obj", "./data/ball.png", 0.05, Vec3(0.5,0.5,0.5),1)
@@ -85,7 +85,7 @@ class BouncingBall():
                         p.resetBaseVelocity(self.ballc, ball_vel.tolist(), angular_vel.tolist())
 
             
-            self.s.cam.setPos(self.playerpos.x, -40, 4)
+            self.s.cam.setPos(self.playerpos.x, -45, 5)
             self.s.cam.lookAt(self.playerpos.x, 0, 1)
 
             # get tracker position and orientation
@@ -113,20 +113,20 @@ class BouncingBall():
             self.prev_paddle_pos = np.array(adjusted_position)
             self.prev_paddle_rot = np.array(adjusted_rotation)
 
-            if adjusted_position[1] > 1.5:
+            if adjusted_position[2] > 5:
                 p.resetBasePositionAndOrientation(self.ballc, posObj=[0, -30, 3],ornObj=[0, 0, 1, 0])
                 self.playerpos = Vec3(0,-30, 0)
                 
             if keyboard.is_pressed('c'):
-                p.resetBasePositionAndOrientation(self.ballc, posObj=[0, -8, 5],ornObj=[0, 0, 1, 0])
+                p.resetBasePositionAndOrientation(self.ballc, posObj=[0, -30, 5],ornObj=[0, 0, 1, 0])
+                self.playerpos = Vec3(0,-30, 0)
                 self.tracker.calibrate()
                 self.prev_paddle_pos = np.array([0.0, 0.0, 0.0])
                 self.prev_paddle_rot = np.array([0.0, 0.0, 0.0, 1.0])  # Quaternion
                 self.prev_time = time.time()
             self.lock.release()
-            p.setTimeStep(dt)
             p.stepSimulation()
-            time.sleep(1/240)
+            time.sleep(1/480)
         return
 
 if __name__ == "__main__":
