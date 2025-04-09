@@ -68,7 +68,7 @@ class Scene(ShowBase):
 
         # body
         collisionid = self.p.createMultiBody(baseMass=mass, baseCollisionShapeIndex=collision)
-        self.p.changeDynamics(collisionid, -1, restitution=rest)
+        self.p.changeDynamics(collisionid, -1, restitution=rest,linearDamping=0.03)
         self.objets.append((model,collisionid))
         return model,collisionid
 

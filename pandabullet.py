@@ -9,9 +9,13 @@ import threading
 from scipy.spatial.transform import Rotation as R
 import trimesh
 import tracker
+import math
+import random
 
 class BouncingBall():
     def __init__(self,scene):
+        self.stop=False
+        self.reply=False
         self.s = scene
         self.tracker = tracker.TrackerVive()
         self.setup_tracker()
@@ -63,24 +67,38 @@ class BouncingBall():
             # calculate player position
             # evaluate where the ball will touch the ground
             gravity=9.8
+            d=0.97
             bpos, bort = p.getBasePositionAndOrientation(self.ballc)
             blvel, bavel = p.getBaseVelocity(self.ballc)
-            sr= blvel[2]*blvel[2] + 2*gravity*bpos[2]
+            sr= blvel[2]*blvel[2] + 2*gravity*(bpos[2]-0.8)
             if sr>0:
                 tf = (blvel[2] + np.sqrt(sr))/(gravity)
                 if tf < 0:
                     tf = (blvel[2] - np.sqrt(sr))/(gravity)
                 
-                xf = bpos[0] + blvel[0] * tf
-                yf = bpos[1] + blvel[1] * tf
+                xf = bpos[0] + blvel[0] * (1 - math.exp(-d*tf))/d
+                yf = bpos[1] + blvel[1] * (1 - math.exp(-d*tf))/d
                 if(yf <-50):
                     yf=-50
-                if(blvel[1] < 0 and blvel[2]<0) or (Vec3(blvel).length() < 2):
-                    self.playerpos.x = self.playerpos.x+(xf-self.playerpos.x)/ self.autofollow
-                    self.playerpos.y = self.playerpos.y+(yf-self.playerpos.y)/ self.autofollow
-                if(blvel[1] > 0 and bpos[1] >0):
+                if(blvel[1] < 0) or (Vec3(blvel).length() < 2):
                     if(bpos[2] < 1):
-                        ball_vel = np.array([0.0, -50.0, 20.0])
+                        self.stop=True
+                    self.reply=False
+                    if(self.stop==False):
+                        self.playerpos.x = self.playerpos.x+(xf-self.playerpos.x)/ self.autofollow
+                        self.playerpos.y = self.playerpos.y+(yf-self.playerpos.y)/ self.autofollow
+                if(blvel[1] > 0 and bpos[1] >0):
+                    self.stop=False
+                    if(bpos[2] < 1):
+                        self.reply=True
+                    if(bpos[2] > 2 and self.reply):
+                        dx = random.randrange(-20,20)
+                        dy = random.randrange(-30,-10)
+                        vz = random.randrange(10,20)
+                        vx = dx - bpos[0]
+                        vy = dy - bpos[1]
+                        self.reply=False
+                        ball_vel = np.array([vx, vy, vz])
                         angular_vel = np.array([0.0, 0.0, 0.0])
                         p.resetBaseVelocity(self.ballc, ball_vel.tolist(), angular_vel.tolist())
 
@@ -95,7 +113,6 @@ class BouncingBall():
             if dt > 0:
                 # linear speed of the tracker
                 paddle_vel = (np.array(adjusted_position) - self.prev_paddle_pos) / dt
-
                 # angular speed of the tracker
                 prev_rot_matrix = R.from_quat(self.prev_paddle_rot).as_matrix()
                 curr_rot_matrix = R.from_quat(adjusted_rotation).as_matrix()
@@ -113,7 +130,7 @@ class BouncingBall():
             self.prev_paddle_pos = np.array(adjusted_position)
             self.prev_paddle_rot = np.array(adjusted_rotation)
 
-            if adjusted_position[2] > 5:
+            if adjusted_position[2] > 6:
                 p.resetBasePositionAndOrientation(self.ballc, posObj=[0, -30, 3],ornObj=[0, 0, 1, 0])
                 self.playerpos = Vec3(0,-30, 0)
                 
