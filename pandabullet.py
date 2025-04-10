@@ -37,7 +37,7 @@ class BouncingBall():
         p.setGravity(0, 0, -9.8)
         p.resetDebugVisualizerCamera(cameraDistance=6, cameraYaw=0, cameraPitch=-30, cameraTargetPosition=[0, 0, 0])
         # Sol physique
-        self.groundm, self.groundc = self.s.add_object("./data/cube.obj", "./data/tennisfull.jpg", 0.0, Vec3(60,60,1))
+        self.groundm, self.groundc = self.s.add_object("./data/cube.obj", "./data/tennisfull.jpg", 0.0, Vec3(60,60,0.3))
         q = Quat()
         q.setHpr(Vec3(0,0,180))
         p.resetBasePositionAndOrientation(self.groundc, [0,0,0], q)
@@ -46,7 +46,7 @@ class BouncingBall():
         self.netm,self.netc = self.s.add_object("./data/tennisnet.obj", "", 0.0, Vec3(2,2,2),0,0.1)      
         q = Quat()
         q.setHpr(Vec3(90,0,0))
-        p.resetBasePositionAndOrientation(self.netc, [0,-1.8,0], q)
+        p.resetBasePositionAndOrientation(self.netc, [0,-1.2,0], q)
 
         # Balle physique
         self.ballm,self.ballc = self.s.add_object("./data/ball1.obj", "./data/ball.png", 0.05, Vec3(0.5,0.5,0.5),1)
@@ -92,10 +92,10 @@ class BouncingBall():
                     self.stop=False
                     if(bpos[2] < 1):
                         self.reply=True
-                    if(bpos[2] > 2 and self.reply):
+                    if(bpos[2] > 2 and self.reply and blvel[2] < 0):
                         dx = random.randrange(-20,20)
                         dy = random.randrange(-30,-10)
-                        vz = random.randrange(10,20)
+                        vz = random.randrange(15,20)
                         vx = dx - bpos[0]
                         vy = dy - bpos[1]
                         self.reply=False

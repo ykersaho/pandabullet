@@ -45,7 +45,9 @@ class Scene(ShowBase):
         #panda
         model = self.loader.loadModel(name)
         if(texturename != ""):
-            texture = self.loader.loadTexture(texturename)  
+            texture = self.loader.loadTexture(texturename)
+            texture.setWrapU(texture.WM_clamp)
+            texture.setWrapV(texture.WM_clamp)
             model.setTexture(texture, 1)
         model.setScale(scale)
         model.reparentTo(self.render)
