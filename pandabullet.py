@@ -78,8 +78,9 @@ class BouncingBall():
                 
                 xf = bpos[0] + blvel[0] * (1 - math.exp(-d*tf))/d
                 yf = bpos[1] + blvel[1] * (1 - math.exp(-d*tf))/d
-                if(yf <-50):
-                    yf=-50
+                #add speed
+                xf = xf + blvel[0]/5
+                yf = yf + blvel[1]/5
                 if(blvel[1] < 0) or (Vec3(blvel).length() < 2):
                     if(bpos[2] < 1):
                         self.stop=True
@@ -103,8 +104,8 @@ class BouncingBall():
                         p.resetBaseVelocity(self.ballc, ball_vel.tolist(), angular_vel.tolist())
 
             
-            self.s.cam.setPos(self.playerpos.x, -45, 5)
-            self.s.cam.lookAt(self.playerpos.x, 0, 1)
+            self.s.cam.setPos(self.playerpos.x, self.playerpos.y - 15, 5)
+            self.s.cam.lookAt(self.playerpos.x, self.playerpos.y + 30, 1)
 
             # get tracker position and orientation
             adjusted_position, adjusted_rotation = self.tracker.getTrackerPos()
