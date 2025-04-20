@@ -81,28 +81,35 @@ class BouncingBall():
                 #add speed
                 xf = xf + blvel[0]/5
                 yf = yf + blvel[1]/5
-                if(blvel[1] < 0) or (Vec3(blvel).length() < 2):
+                if(blvel[1] < 0):
                     if(bpos[2] < 1):
                         self.stop=True
                     self.reply=False
                     if(self.stop==False):
                         self.playerpos.x = self.playerpos.x+(xf-self.playerpos.x)/ self.autofollow
                         self.playerpos.y = self.playerpos.y+(yf-self.playerpos.y)/ self.autofollow
-                if(blvel[1] > 0 and bpos[1] >0):
+                if(blvel[1] >= 0 and bpos[1] >0):
+                    self.playerpos.x = self.playerpos.x+(0-self.playerpos.x)/ self.autofollow
+                    self.playerpos.y = self.playerpos.y+(-30-self.playerpos.y)/ self.autofollow
                     self.stop=False
                     if(bpos[2] < 1):
                         self.reply=True
                     if(bpos[2] > 2 and self.reply and blvel[2] < 0):
-                        dx = random.randrange(-20,20)
-                        dy = random.randrange(-30,-10)
-                        vz = random.randrange(15,20)
-                        vx = dx - bpos[0]
-                        vy = dy - bpos[1]
+                        x1 = random.randrange(-20,20)
+                        y1 = random.randrange(-30,-25)
+                        vz = random.randrange(15,18)
+                        sr= vz*vz + 2*gravity*(vz-0.8)
+                        if sr>0:
+                            tf = (vz + np.sqrt(sr))/(gravity)
+                            if tf < 0:
+                                tf = (vz - np.sqrt(sr))/(gravity)                
+
+                        vx = (x1 - bpos[0])*d/(1-math.exp(-d*tf))
+                        vy = (y1 - bpos[1])*d/(1-math.exp(-d*tf))
                         self.reply=False
                         ball_vel = np.array([vx, vy, vz])
                         angular_vel = np.array([0.0, 0.0, 0.0])
                         p.resetBaseVelocity(self.ballc, ball_vel.tolist(), angular_vel.tolist())
-
             
             self.s.cam.setPos(self.playerpos.x, self.playerpos.y - 15, 5)
             self.s.cam.lookAt(self.playerpos.x, self.playerpos.y + 30, 1)
@@ -142,8 +149,8 @@ class BouncingBall():
                 self.prev_paddle_pos = np.array([0.0, 0.0, 0.0])
                 self.prev_paddle_rot = np.array([0.0, 0.0, 0.0, 1.0])  # Quaternion
                 self.prev_time = time.time()
-            self.lock.release()
             p.stepSimulation()
+            self.lock.release()
             time.sleep(1/480)
         return
 
