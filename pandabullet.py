@@ -11,6 +11,7 @@ import trimesh
 import tracker
 import math
 import random
+import player
 
 class BouncingBall():
     def __init__(self,scene):
@@ -22,6 +23,10 @@ class BouncingBall():
         self.setup_world()
         self.lock = Semaphore()
         scene.lock = self.lock
+        self.player1=player.Player(1)
+        self.player2=player.Player(-1)
+        self.trajectorypos = [[0, 0, 5]]*1000
+        self.trajectoryrot = [[0, 0, 0, 1]]*1000
         threading.Thread(target=self.update_physics).start()
 
     def setup_tracker(self):
@@ -32,7 +37,6 @@ class BouncingBall():
 
     def setup_world(self):
         self.autofollow=100
-        self.playerpos = Vec3(0,-4,0)
         p.connect(p.DIRECT) # use p.GUI if you want to see bullet view
         p.setGravity(0, 0, -9.8)
         p.resetDebugVisualizerCamera(cameraDistance=6, cameraYaw=0, cameraPitch=-30, cameraTargetPosition=[0, 0, 0])
@@ -55,7 +59,11 @@ class BouncingBall():
         # Raquette physique
         self.racketm,self.racketc = self.s.add_object("./data/racket.obj", "./data/racket.jpg", 1.0, Vec3(0.05,0.05,0.05),2)
         p.resetBasePositionAndOrientation(self.racketc, [0,0,2], [0,0,0,1])
-        
+
+        # Raquette physique
+        self.racket2m,self.racket2c = self.s.add_object("./data/racket.obj", "./data/racket.jpg", 0.0, Vec3(0.05,0.05,0.05),2)
+        p.resetBasePositionAndOrientation(self.racketc, [0,0,2], [0,0,0,1])
+
     def update_physics(self):
         # Simulation
         while True:
@@ -64,59 +72,50 @@ class BouncingBall():
             curr_time = time.time()
             dt = curr_time - self.prev_time
             self.prev_time = curr_time
-            # calculate player position
-            # evaluate where the ball will touch the ground
+            # update player position
             gravity=9.8
             d=0.97
             bpos, bort = p.getBasePositionAndOrientation(self.ballc)
             blvel, bavel = p.getBaseVelocity(self.ballc)
-            sr= blvel[2]*blvel[2] + 2*gravity*(bpos[2]-0.8)
-            if sr>0:
-                tf = (blvel[2] + np.sqrt(sr))/(gravity)
-                if tf < 0:
-                    tf = (blvel[2] - np.sqrt(sr))/(gravity)
-                
-                xf = bpos[0] + blvel[0] * (1 - math.exp(-d*tf))/d
-                yf = bpos[1] + blvel[1] * (1 - math.exp(-d*tf))/d
-                #add speed
-                xf = xf + blvel[0]/5
-                yf = yf + blvel[1]/5
-                if(blvel[1] < 0):
-                    if(bpos[2] < 1):
-                        self.stop=True
-                    self.reply=False
-                    if(self.stop==False):
-                        self.playerpos.x = self.playerpos.x+(xf-self.playerpos.x)/ self.autofollow
-                        self.playerpos.y = self.playerpos.y+(yf-self.playerpos.y)/ self.autofollow
-                if(blvel[1] >= 0 and bpos[1] >0):
-                    self.playerpos.x = self.playerpos.x+(0-self.playerpos.x)/ self.autofollow
-                    self.playerpos.y = self.playerpos.y+(-30-self.playerpos.y)/ self.autofollow
-                    self.stop=False
-                    if(bpos[2] < 1):
-                        self.reply=True
-                    if(bpos[2] > 2 and self.reply and blvel[2] < 0):
-                        x1 = random.randrange(-20,20)
-                        y1 = random.randrange(-30,-25)
-                        vz = random.randrange(15,18)
-                        sr= vz*vz + 2*gravity*(vz-0.8)
-                        if sr>0:
-                            tf = (vz + np.sqrt(sr))/(gravity)
-                            if tf < 0:
-                                tf = (vz - np.sqrt(sr))/(gravity)                
-
-                        vx = (x1 - bpos[0])*d/(1-math.exp(-d*tf))
-                        vy = (y1 - bpos[1])*d/(1-math.exp(-d*tf))
-                        self.reply=False
-                        ball_vel = np.array([vx, vy, vz])
-                        angular_vel = np.array([0.0, 0.0, 0.0])
-                        p.resetBaseVelocity(self.ballc, ball_vel.tolist(), angular_vel.tolist())
+            playerpos1 = self.player1.updateposition(bpos,blvel)
+            playerpos2 = self.player2.updateposition(bpos,blvel)
+            if(bpos[2] > 2 and self.player2.getreply() and blvel[2] < 0):
+                x1 = random.randrange(-20,20)
+                y1 = random.randrange(-30,-25)
+                vz = random.randrange(15,18)
+                sr= vz*vz + 2*gravity*(vz-0.8)
+                if sr>0:
+                    tf = (vz + np.sqrt(sr))/(gravity)
+                    if tf < 0:
+                        tf = (vz - np.sqrt(sr))/(gravity)                
+                vx = (x1 - bpos[0])*d/(1-math.exp(-d*tf))
+                vy = (y1 - bpos[1])*d/(1-math.exp(-d*tf))
+                self.reply=False
+                ball_vel = np.array([vx, vy, vz])
+                angular_vel = np.array([0.0, 0.0, 0.0])
+                p.resetBaseVelocity(self.ballc, ball_vel.tolist(), angular_vel.tolist())
             
-            self.s.cam.setPos(self.playerpos.x, self.playerpos.y - 15, 5)
-            self.s.cam.lookAt(self.playerpos.x, self.playerpos.y + 30, 1)
+            self.s.cam.setPos(playerpos1[0], playerpos1[1] - 15, 5)
+            self.s.cam.lookAt(playerpos1[0], playerpos1[1] + 30, 1)
 
             # get tracker position and orientation
             adjusted_position, adjusted_rotation = self.tracker.getTrackerPos()
-            adjusted_position[0],adjusted_position[1],adjusted_position[2] = adjusted_position[0]+self.playerpos.x,adjusted_position[1]+self.playerpos.y,adjusted_position[2]+self.playerpos.z
+            index = int(abs(bpos[1])*100/30)
+            if(blvel[1]*bpos[1] < 0):
+                index = index + 500
+            if(bpos[1] < 0):
+                if(index > 0 and index < len(self.trajectoryrot)):
+                    self.trajectoryrot[index] = [adjusted_rotation[0],adjusted_rotation[1],adjusted_rotation[2],adjusted_rotation[3]]
+                    self.trajectorypos[index] = [adjusted_position[0],adjusted_position[1],adjusted_position[2]]
+            else:
+                if(index > 0 and index < len(self.trajectoryrot)):
+                    p_adjusted_rotation=self.trajectoryrot[index]
+                    adjusted_rotation2 = Quat(p_adjusted_rotation[0],p_adjusted_rotation[1],-p_adjusted_rotation[2],p_adjusted_rotation[3])
+                    p_adjusted_position=self.trajectorypos[index]
+                    adjusted_position2 = [p_adjusted_position[0]+playerpos2[0],p_adjusted_position[1]+playerpos2[1],p_adjusted_position[2]+playerpos2[2]]
+                    p.resetBasePositionAndOrientation(self.racket2c, adjusted_position2, adjusted_rotation2)
+            
+            adjusted_position[0],adjusted_position[1],adjusted_position[2] = adjusted_position[0]+playerpos1[0],adjusted_position[1]+playerpos1[1],adjusted_position[2]+playerpos1[2]
             p.resetBasePositionAndOrientation(self.racketc, adjusted_position, adjusted_rotation)
             if dt > 0:
                 # linear speed of the tracker
@@ -140,11 +139,13 @@ class BouncingBall():
 
             if adjusted_position[2] > 6:
                 p.resetBasePositionAndOrientation(self.ballc, posObj=[0, -30, 3],ornObj=[0, 0, 1, 0])
-                self.playerpos = Vec3(0,-30, 0)
+                self.player1.setposition([0,-30, 0])
+                self.player2.setposition([0,30, 0])
                 
             if keyboard.is_pressed('c'):
                 p.resetBasePositionAndOrientation(self.ballc, posObj=[0, -30, 5],ornObj=[0, 0, 1, 0])
-                self.playerpos = Vec3(0,-30, 0)
+                self.player1.setposition([0,-30, 0])
+                self.player2.setposition([0,30, 0])
                 self.tracker.calibrate()
                 self.prev_paddle_pos = np.array([0.0, 0.0, 0.0])
                 self.prev_paddle_rot = np.array([0.0, 0.0, 0.0, 1.0])  # Quaternion
